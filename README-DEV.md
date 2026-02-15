@@ -1,4 +1,4 @@
-# IndicOCR — Project Plan
+# IndicOCR — A Xeon OCR Engine for Indic Languages
 
 > **Platform:** This project is specifically designed to run on **Intel Xeon 6** processors with CPU-based inference.
 
@@ -223,7 +223,7 @@ ${OCR_OUTPUT_BASE}/single/hi/20260215_143022_document/
   "success": true,
   "folder_path": "${OCR_INPUT_BASE}/hindi",
   "language": "hi",
-  "output_dir": "${OCR_OUTPUT_BASE}/batch/hi/20260215_143500_folder_name",
+  "output_dir": "${OCR_OUTPUT_BASE}/batch/hi/folder_name",
   "total_images": 25,
   "processed": 23,
   "failed": 2,
@@ -329,7 +329,7 @@ All outputs are saved under `${OCR_OUTPUT_BASE}` with separation by mode:
 ${OCR_OUTPUT_BASE}/
 ├── single/                    # Single-image results
 │   ├── hi/                    # Grouped by language
-│   │   ├── 20260215_143022_document_001/
+│   │   ├── document_001/
 │   │   │   ├── result.json
 │   │   │   ├── extracted_text.txt
 │   │   │   └── annotated.png
@@ -339,7 +339,7 @@ ${OCR_OUTPUT_BASE}/
 │   └── ta/
 └── batch/                     # Batch results
     ├── hi/
-    │   ├── 20260215_143500_Page_Level_Training_Set/
+    │   ├── Page_Set/
     │   │   ├── batch_summary.json
     │   │   ├── page_001/
     │   │   │   ├── result.json
@@ -408,46 +408,6 @@ services:
 | File too large | 413 | `{"detail": "File size exceeds 50MB limit"}` |
 | OCR engine error | 500 | `{"detail": "OCR processing failed: <error_message>"}` |
 
----
-
-## 12. Development Roadmap
-
-### Phase 1 — MVP (Current)
-- [x] Project structure and configuration
-- [x] PaddleOCR engine wrapper with lazy loading
-- [x] Single-image OCR endpoint (`POST /ocr/single`)
-- [x] Batch OCR endpoint (`POST /ocr/batch`)
-- [x] Health check and language listing endpoints
-- [x] JSON + plain text + annotated image output
-- [x] Docker support
-- [x] Project README and Project Plan
-
-### Phase 2 — Enhancements
-- [ ] Async batch processing with job status polling (`GET /ocr/batch/{job_id}/status`)
-- [ ] WebSocket support for real-time batch progress
-- [ ] Confidence threshold filtering (skip low-confidence results)
-- [ ] Custom model configuration per request
-- [ ] Rate limiting and API key authentication
-- [ ] Prometheus metrics endpoint
-
-### Phase 3 — Extended
-- [ ] Additional Indic languages (Kannada, Bengali, Gujarati, Punjabi, etc.)
-- [ ] Document structure analysis (tables, headers via PPStructureV3)
-- [ ] PDF input support (render pages to images)
-- [ ] Model fine-tuning pipeline for custom handwriting styles
-- [ ] Horizontal scaling with task queue (Celery/Redis)
-
----
-
-## 13. Testing Strategy
-
-| Test Type | Tool | Scope |
-|---|---|---|
-| Unit | pytest | OCR engine wrapper, file handler, image validation |
-| Integration | pytest + httpx AsyncClient | Endpoint request/response validation |
-| E2E | curl / Postman | Full pipeline with real Indic handwriting images |
-| Load | locust | Concurrency and throughput benchmarks |
-
 ### Sample Test Commands
 
 ```bash
@@ -469,7 +429,7 @@ curl -X POST "http://localhost:8111/ocr/batch" \
 
 ---
 
-## 14. Key Design Decisions
+## 12. Key Design Decisions
 
 | Decision | Rationale |
 |---|---|
