@@ -21,12 +21,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create output directories
-RUN mkdir -p /user-ali/outputs/ocr/single /user-ali/outputs/ocr/batch
-
 # Suppress verbose PaddleX model source check during startup
 ENV PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
+ENV OCR_OUTPUT_BASE=/app/outputs/ocr
 
 EXPOSE 8111
+
+# Create output directories at runtime using environment variable
+RUN mkdir -p "${OCR_OUTPUT_BASE}/single" "${OCR_OUTPUT_BASE}/batch"
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8111"]

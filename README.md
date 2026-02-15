@@ -26,6 +26,10 @@ A FastAPI-based OCR service for extracting text from handwritten document images
 ```bash
 cd indicOCR
 
+# Setup environment
+cp .env.example .env
+# Edit .env and update HOME_DIR, OCR_OUTPUT_BASE, and OCR_INPUT_BASE for your machine
+
 # Create virtual environment
 python -m venv .venv
 source .venv/bin/activate
@@ -44,7 +48,11 @@ The API is available at **http://localhost:8111**. Interactive docs at **http://
 ```bash
 cd indicOCR
 
-# Build and start
+# Setup environment
+cp .env.example .env
+# Edit .env and update HOME_DIR, OCR_OUTPUT_BASE, and OCR_INPUT_BASE for your machine
+
+# Build and start (uses .env file for paths)
 docker compose up --build -d
 
 # Check logs
@@ -99,7 +107,7 @@ curl -X POST "http://localhost:8111/ocr/single?lang=hi" \
   "success": true,
   "filename": "document.png",
   "language": "hi",
-  "output_dir": "/user-ali/outputs/ocr/single/hi/20260215_143022_document",
+  "output_dir": "${OCR_OUTPUT_BASE}/single/hi/20260215_143022_document",
   "results": [
     {
       "text": "नमस्ते दुनिया",
@@ -126,7 +134,7 @@ Process all images in a server folder:
 curl -X POST "http://localhost:8111/ocr/batch" \
   -H "Content-Type: application/json" \
   -d '{
-    "folder_path": "/user-ali/resources/ocr_inputs/hindi/Page_Level_Training_Set",
+    "folder_path": "${OCR_INPUT_BASE}/hindi",
     "lang": "hi",
     "save_annotated": true,
     "recursive": false
@@ -147,9 +155,9 @@ curl -X POST "http://localhost:8111/ocr/batch" \
 ```json
 {
   "success": true,
-  "folder_path": "/user-ali/resources/ocr_inputs/hindi/Page_Level_Training_Set",
+  "folder_path": "${OCR_INPUT_BASE}/hindi",
   "language": "hi",
-  "output_dir": "/user-ali/outputs/ocr/batch/hi/20260215_143500_Page_Level_Training_Set",
+  "output_dir": "${OCR_OUTPUT_BASE}/batch/hi/20260215_143500_folder",
   "total_images": 25,
   "processed": 23,
   "failed": 2,
@@ -162,10 +170,10 @@ curl -X POST "http://localhost:8111/ocr/batch" \
 
 ## Output Structure
 
-All outputs are saved under `/user-ali/outputs/ocr/`:
+All outputs are saved under `${OCR_OUTPUT_BASE}` (configured in `.env`):
 
 ```
-/user-ali/outputs/ocr/
+${OCR_OUTPUT_BASE}/
 ├── single/                         # Single-image results
 │   └── hi/                         # By language
 │       └── 20260215_143022_doc1/
@@ -200,11 +208,25 @@ All languages use `PP-OCRv5_server_det` for text detection (optimized for handwr
 
 ## Configuration
 
+### Environment Setup
+
+1. Copy the example configuration:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and update the paths for your machine:
+   - `HOME_DIR`: Base path to your workspace
+   - `OCR_OUTPUT_BASE`: Where OCR results will be saved
+   - `OCR_INPUT_BASE`: Where input images are located
+
 Environment variables (set in `.env` or pass to Docker):
 
 | Variable | Default | Description |
 |---|---|---|
-| `OCR_OUTPUT_BASE` | `/user-ali/outputs/ocr` | Base output directory |
+| `HOME_DIR` | `/path/to/your/workspace` | Base directory for your setup |
+| `OCR_OUTPUT_BASE` | `${HOME_DIR}/outputs/ocr` | Base output directory |
+| `OCR_INPUT_BASE` | `${HOME_DIR}/resources/ocr_inputs` | Base input directory |
 | `OCR_HOST` | `0.0.0.0` | Server bind host |
 | `OCR_PORT` | `8111` | Server bind port |
 | `LOG_LEVEL` | `INFO` | Logging level |
@@ -234,11 +256,11 @@ indicOCR/
 │       ├── image_utils.py   # Image validation
 │       └── logging_config.py
 ├── tests/
+├── .env.example             # Environment configuration template
 ├── Dockerfile
 ├── docker-compose.yaml
 ├── requirements.txt
-├── README.md
-└── PROJECT_PLAN.md
+└── README.md
 ```
 
 ---

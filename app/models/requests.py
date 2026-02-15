@@ -11,7 +11,7 @@ class BatchOCRRequest(BaseModel):
     folder_path: str = Field(
         ...,
         description="Absolute path to the folder containing images on the server",
-        examples=["/user-ali/resources/ocr_inputs/hindi/Page_Level_Training_Set"],
+        examples=["/path/to/ocr_inputs/hindi"],
     )
     lang: str = Field(
         ...,
