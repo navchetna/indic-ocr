@@ -2,7 +2,7 @@
 
 > **Platform:** This application is specifically designed to run on **Intel Xeon 6** processors with CPU-based inference.
 
-A FastAPI-based OCR service for extracting text from handwritten document images in Indic languages, powered by **PaddleOCR PP-OCRv5**.
+A FastAPI-based OCR service for extracting text from handwritten document images in Indic languages, powered by **PaddleOCR**.
 
 ## Features
 
