@@ -33,7 +33,6 @@ class OCREngineManager:
             start = time.time()
 
             # Initialize PaddleOCR with language-specific model
-            # Using simple initialization that works reliably (based on /user-ali/indic.ai/paddleOCR/PaddleOCR/inference/run.py)
             cls._engines[lang] = PaddleOCR(
                 lang=lang,
                 enable_mkldnn=False,  # CPU stability: use pure Paddle inference (avoid MKL-DNN linking issues)

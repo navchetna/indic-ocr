@@ -170,7 +170,7 @@ indicOCR/
   "success": true,
   "filename": "document_001.png",
   "language": "hi",
-  "output_dir": "/user-ali/outputs/ocr/single/hi/20260215_143022_document_001",
+  "output_dir": "${OCR_OUTPUT_BASE}/single/hi/20260215_143022_document_001",
   "results": [
     {
       "text": "नमस्ते दुनिया",
@@ -185,7 +185,7 @@ indicOCR/
 
 **Output Files (saved to disk):**
 ```
-/user-ali/outputs/ocr/single/hi/20260215_143022_document_001/
+${OCR_OUTPUT_BASE}/single/hi/20260215_143022_document/
 ├── result.json           # Structured OCR results
 ├── extracted_text.txt    # Plain text output
 └── annotated.png         # Image with bounding boxes drawn
@@ -203,7 +203,7 @@ indicOCR/
 
 ```json
 {
-  "folder_path": "/user-ali/resources/ocr_inputs/hindi/Page_Level_Training_Set",
+  "folder_path": "${OCR_INPUT_BASE}/hindi",
   "lang": "hi",
   "save_annotated": true,
   "recursive": false
@@ -221,9 +221,9 @@ indicOCR/
 ```json
 {
   "success": true,
-  "folder_path": "/user-ali/resources/ocr_inputs/hindi/Page_Level_Training_Set",
+  "folder_path": "${OCR_INPUT_BASE}/hindi",
   "language": "hi",
-  "output_dir": "/user-ali/outputs/ocr/batch/hi/20260215_143500_Page_Level_Training_Set",
+  "output_dir": "${OCR_OUTPUT_BASE}/batch/hi/20260215_143500_folder_name",
   "total_images": 25,
   "processed": 23,
   "failed": 2,
@@ -247,7 +247,7 @@ indicOCR/
 
 **Output Files (saved to disk):**
 ```
-/user-ali/outputs/ocr/batch/hi/20260215_143500_Page_Level_Training_Set/
+${OCR_OUTPUT_BASE}/batch/hi/20260215_143500_folder/
 ├── batch_summary.json              # Aggregated results for all images
 ├── page_001/
 │   ├── result.json
@@ -323,10 +323,10 @@ class OCREngineManager:
 
 ## 8. Output Structure
 
-All outputs are saved under `/user-ali/outputs/ocr/` with separation by mode:
+All outputs are saved under `${OCR_OUTPUT_BASE}` with separation by mode:
 
 ```
-/user-ali/outputs/ocr/
+${OCR_OUTPUT_BASE}/
 ├── single/                    # Single-image results
 │   ├── hi/                    # Grouped by language
 │   │   ├── 20260215_143022_document_001/
@@ -362,7 +362,7 @@ All outputs are saved under `/user-ali/outputs/ocr/` with separation by mode:
 - **System deps:** `libgl1-mesa-glx`, `libglib2.0-0`, `libgomp1` (OpenCV runtime)
 - **Python deps:** PaddlePaddle (CPU), PaddleOCR, FastAPI, uvicorn
 - **Expose:** Port 8111
-- **Volumes:** Mount `/user-ali/outputs/ocr` and input directories
+- **Volumes:** Mount `${OCR_OUTPUT_BASE}` and `${OCR_INPUT_BASE}` directories
 
 ### Docker Compose
 
@@ -373,10 +373,10 @@ services:
     ports:
       - "8111:8111"
     volumes:
-      - /user-ali/outputs/ocr:/user-ali/outputs/ocr
-      - /user-ali/resources/ocr_inputs:/user-ali/resources/ocr_inputs
+      - ${OCR_OUTPUT_BASE}:${OCR_OUTPUT_BASE}
+      - ${OCR_INPUT_BASE}:${OCR_INPUT_BASE}
     environment:
-      - OCR_OUTPUT_BASE=/user-ali/outputs/ocr
+      - OCR_OUTPUT_BASE=${OCR_OUTPUT_BASE}
       - LOG_LEVEL=INFO
       - PRELOAD_LANGUAGES=hi,mr
 ```
@@ -387,7 +387,7 @@ services:
 
 | Variable | Default | Description |
 |---|---|---|
-| `OCR_OUTPUT_BASE` | `/user-ali/outputs/ocr` | Base directory for all OCR outputs |
+| `OCR_OUTPUT_BASE` | `${HOME_DIR}/outputs/ocr` | Base directory for all OCR outputs |
 | `OCR_HOST` | `0.0.0.0` | FastAPI bind host |
 | `OCR_PORT` | `8111` | FastAPI bind port |
 | `LOG_LEVEL` | `INFO` | Logging level |
@@ -459,12 +459,12 @@ pytest tests/ --cov=app --cov-report=html
 
 # E2E: Single image
 curl -X POST "http://localhost:8111/ocr/single?lang=hi" \
-  -F "file=@/user-ali/resources/ocr_inputs/hindi/Page_Level_Training_Set/sample.png"
+  -F "file=@${OCR_INPUT_BASE}/hindi/sample.png"
 
 # E2E: Batch
 curl -X POST "http://localhost:8111/ocr/batch" \
   -H "Content-Type: application/json" \
-  -d '{"folder_path": "/user-ali/resources/ocr_inputs/hindi/Page_Level_Training_Set", "lang": "hi"}'
+  -d '{"folder_path": "${OCR_INPUT_BASE}/hindi", "lang": "hi"}'
 ```
 
 ---

@@ -12,13 +12,15 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
+    # Paths
+    home_dir: str
+    ocr_output_base: str = ""
+    ocr_input_base: str = ""
+
     # Server
     ocr_host: str = "0.0.0.0"
     ocr_port: int = 8111
     log_level: str = "INFO"
-
-    # Output
-    ocr_output_base: str = "/user-ali/outputs/ocr"
 
     # Model (using defaults via lang parameter only)
     preload_languages: str = ""  # Comma-separated, e.g. "hi,mr"
@@ -30,6 +32,14 @@ class Settings(BaseSettings):
     supported_extensions: str = ".png,.jpg,.jpeg,.tiff,.tif,.bmp,.webp"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Expand paths with home_dir if not set explicitly
+        if not self.ocr_output_base:
+            self.ocr_output_base = f"{self.home_dir}/outputs/ocr"
+        if not self.ocr_input_base:
+            self.ocr_input_base = f"{self.home_dir}/resources/ocr_inputs"
 
     @property
     def max_image_size_bytes(self) -> int:
