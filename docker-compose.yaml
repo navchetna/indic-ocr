@@ -1,0 +1,19 @@
+services:
+  indicocr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: indicocr
+    ports:
+      - "8111:8111"
+    volumes:
+      - /user-ali/outputs/ocr:/user-ali/outputs/ocr
+      - /user-ali/resources/ocr_inputs:/user-ali/resources/ocr_inputs
+    environment:
+      - OCR_OUTPUT_BASE=/user-ali/outputs/ocr
+      - OCR_HOST=0.0.0.0
+      - OCR_PORT=8111
+      - LOG_LEVEL=INFO
+      - PRELOAD_LANGUAGES=
+      - MAX_IMAGE_SIZE_MB=50
+    restart: unless-stopped
