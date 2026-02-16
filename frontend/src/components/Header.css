@@ -1,0 +1,49 @@
+/* ── Header ──────────────────────────────────────────────────── */
+.app-header {
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  background: var(--white);
+  border-bottom: var(--border);
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.header-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  color: var(--gray-600);
+  transition: background 0.15s;
+}
+
+.header-menu-btn:hover {
+  background: var(--gray-100);
+}
+
+.header-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.header-logo {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--teal-700);
+  letter-spacing: -0.02em;
+}
+
+.header-subtitle {
+  font-size: 0.85rem;
+  color: var(--gray-400);
+  font-weight: 400;
+}
+
+.header-spacer {
+  flex: 1;
+}

@@ -1,0 +1,240 @@
+/* ── Upload Card ─────────────────────────────────────────────── */
+.upload-card {
+  background: var(--white);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+}
+
+.upload-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 20px;
+}
+
+.upload-title svg {
+  color: var(--teal-600);
+}
+
+/* ── Dropzone ────────────────────────────────────────────────── */
+.dropzone {
+  border: 2px dashed var(--gray-300);
+  border-radius: var(--radius);
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--gray-50);
+  position: relative;
+}
+
+.dropzone:hover {
+  border-color: var(--teal-400);
+  background: var(--teal-50);
+}
+
+.dropzone.drag-active {
+  border-color: var(--teal-500);
+  background: var(--teal-50);
+  box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1);
+}
+
+.dropzone.has-preview {
+  padding: 16px;
+  cursor: default;
+  background: var(--white);
+  border-style: solid;
+  border-color: var(--gray-200);
+}
+
+.dropzone-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--gray-400);
+}
+
+.dropzone-prompt p {
+  font-size: 0.95rem;
+  color: var(--gray-600);
+}
+
+.dropzone-link {
+  color: var(--teal-600);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dropzone-hint {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+}
+
+.file-input {
+  display: none;
+}
+
+/* ── Preview ─────────────────────────────────────────────────── */
+.preview-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.preview-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: var(--border);
+}
+
+.preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.preview-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--gray-800);
+  word-break: break-all;
+}
+
+.preview-size {
+  font-size: 0.8rem;
+  color: var(--gray-400);
+}
+
+.preview-clear {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 1.3rem;
+  color: var(--gray-400);
+  transition: all 0.15s;
+}
+
+.preview-clear:hover {
+  background: var(--red-50);
+  color: var(--red-500);
+}
+
+/* ── Controls ────────────────────────────────────────────────── */
+.upload-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  max-width: 280px;
+}
+
+.control-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.lang-select {
+  padding: 10px 14px;
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  color: var(--gray-800);
+  cursor: pointer;
+  transition: border-color 0.15s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.lang-select:focus {
+  outline: none;
+  border-color: var(--teal-400);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+}
+
+.submit-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: var(--teal-600);
+  color: var(--white);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: var(--teal-700);
+  box-shadow: var(--shadow-md);
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Batch Placeholder ───────────────────────────────────────── */
+.batch-coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px;
+  color: var(--gray-400);
+  text-align: center;
+}
+
+.batch-coming-soon h2 {
+  font-size: 1.2rem;
+  color: var(--gray-600);
+  margin-top: 16px;
+}
+
+.batch-coming-soon p {
+  font-size: 0.9rem;
+  max-width: 360px;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .upload-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .control-group {
+    max-width: none;
+  }
+}

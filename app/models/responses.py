@@ -21,9 +21,7 @@ class SingleOCRResponse(BaseModel):
     success: bool
     filename: str
     language: str
-    output_dir: str
-    results: list[TextRegion]
-    full_text: str = Field(..., description="All recognized text concatenated")
+    extracted_text: str = Field(..., description="All recognized text concatenated")
     processing_time_seconds: float
 
 

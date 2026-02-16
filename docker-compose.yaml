@@ -11,3 +11,15 @@ services:
       - ${OCR_INPUT_BASE}:${OCR_INPUT_BASE}
     environment:
       - OCR_OUTPUT_BASE=${OCR_OUTPUT_BASE}
+
+  indicocr-ui:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: indicocr-ui
+    ports:
+      - "8112:80"
+    volumes:
+      - ${OCR_OUTPUT_BASE}:/outputs/ocr:ro
+    depends_on:
+      - indicocr

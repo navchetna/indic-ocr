@@ -101,16 +101,14 @@ async def ocr_single_image(
 
         logger.info(
             f"Single OCR completed: {filename} | lang={lang} | "
-            f"regions={len(text_regions)} | time={processing_time}s"
+            f"regions={len(ocr_result['results'])} | time={processing_time}s"
         )
 
         return SingleOCRResponse(
             success=True,
             filename=filename,
             language=lang,
-            output_dir=str(output_dir),
-            results=text_regions,
-            full_text=ocr_result["full_text"],
+            extracted_text=ocr_result["full_text"],
             processing_time_seconds=processing_time,
         )
 
