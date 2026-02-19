@@ -22,6 +22,10 @@ class SingleOCRResponse(BaseModel):
     filename: str
     language: str
     extracted_text: str = Field(..., description="All recognized text concatenated")
+    text_regions: list[TextRegion] = Field(
+        default_factory=list,
+        description="Per-region OCR results with confidence and bounding boxes",
+    )
     processing_time_seconds: float
 
 

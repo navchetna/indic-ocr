@@ -109,6 +109,7 @@ async def ocr_single_image(
             filename=filename,
             language=lang,
             extracted_text=ocr_result["full_text"],
+            text_regions=text_regions,
             processing_time_seconds=processing_time,
         )
 
