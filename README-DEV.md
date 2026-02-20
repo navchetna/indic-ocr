@@ -1,292 +1,209 @@
-# IndicOCR — A Xeon OCR Engine for Indic Languages
+# IndicOCR — Developer Reference
 
-> **Platform:** This project is specifically designed to run on **Intel Xeon 6** processors with CPU-based inference.
-
-## 1. Overview
-
-**IndicOCR** is a FastAPI-based OCR service for extracting text from document images of handwritten Indic-language texts. It leverages **PaddleOCR (PP-OCRv5)** as the backend processing engine with language-specific recognition models for Hindi, Marathi, Telugu, and Tamil.
-
-The service exposes REST endpoints for **single-image** and **batch (folder-based)** processing, supporting language-agnostic invocation where the target language is passed as a request parameter.
+> **Platform:** Intel Xeon 6 processors, CPU-based inference only.
 
 ---
 
-## 2. Tech Stack
+## 1. Quick Start (Development)
 
-| Layer | Technology | Version / Notes |
+### Local
+
+```bash
+cd indicOCR
+cp .env.example .env          # edit HOME_DIR, OCR_OUTPUT_BASE, OCR_INPUT_BASE
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8111 --reload
+```
+
+### Docker
+
+```bash
+cd indicOCR
+cp .env.example .env          # edit paths
+docker compose up --build -d
+docker compose logs -f indicocr
+```
+
+| Container | Port | Description |
 |---|---|---|
-| **Language** | Python | 3.10+ |
-| **Web Framework** | FastAPI | 0.115+ with Uvicorn ASGI server |
-| **OCR Engine** | PaddleOCR | PP-OCRv5 (via `paddleocr` Python package) |
-| **Deep Learning** | PaddlePaddle | CPU (`paddlepaddle` package) |
-| **Image Processing** | OpenCV, Pillow | For image I/O and annotated output |
-| **Serialization** | Pydantic v2 | Request/response models |
-| **Async File I/O** | aiofiles | Non-blocking file writes |
-| **Containerization** | Docker + Docker Compose | Multi-stage build |
-| **Logging** | Python `logging` | Structured JSON logging |
-| **Testing** | pytest + httpx | Async test client |
+| `indicocr` | 8111 | FastAPI backend |
+| `indicocr-ui` | 8112 | Nginx frontend |
 
 ---
 
-## 3. Supported Languages
-
-| Language | ISO Code | Script | PaddleOCR Recognition Model | Dictionary |
-|---|---|---|---|---|
-| Hindi | `hi` | Devanagari | `devanagari_PP-OCRv5_mobile_rec` | `ppocrv5_devanagari_dict.txt` |
-| Marathi | `mr` | Devanagari | `devanagari_PP-OCRv5_mobile_rec` | `ppocrv5_devanagari_dict.txt` |
-| Telugu | `te` | Telugu | `te_PP-OCRv5_mobile_rec` | `ppocrv5_te_dict.txt` |
-| Tamil | `ta` | Tamil | `ta_PP-OCRv5_mobile_rec` | `ppocrv5_ta_dict.txt` |
-
-> **Note:** Hindi and Marathi share the Devanagari recognition model. Telugu and Tamil each have dedicated models. Detection uses the universal `PP-OCRv5_server_det` model for all languages (better accuracy on handwritten text).
-
----
-
-## 4. PaddleOCR Processing Pipeline
-
-```
-Input Image
-    │
-    ├── [Optional] Document Orientation Classification (0°/90°/180°/270°)
-    ├── [Optional] Document Unwarping (flatten curved/warped pages)
-    │
-    ▼
-1. Text Detection (PP-OCRv5_server_det)
-    │   → Produces bounding box polygons around text regions
-    ▼
-2. Crop & Sort detected text regions (top-to-bottom, left-to-right)
-    │
-    ├── [Optional] Textline Orientation Classification (handle rotated lines)
-    │
-    ▼
-3. Text Recognition (language-specific model)
-    │   → Produces (text, confidence_score) per detected region
-    ▼
-Output: List of { bounding_box, text, confidence }
-```
-
-### Key PaddleOCR API Usage
-
-```python
-from paddleocr import PaddleOCR
-
-# Initialize with language and server detection model
-ocr = PaddleOCR(
-    lang='hi',                              # Language code
-    use_doc_orientation_classify=False,      # Disable for speed (enable if needed)
-    use_doc_unwarping=False,                 # Disable for speed
-    use_textline_orientation=False,          # Disable for speed
-    text_detection_model_name="PP-OCRv5_server_det",  # Server model for accuracy
-)
-
-# Run inference
-result = ocr.predict("path/to/image.png")
-
-# Each result contains:
-# - rec_texts: list of recognized text strings
-# - rec_scores: list of confidence scores
-# - dt_polys: list of bounding box polygons
-# - save_to_img("output_dir")  → Annotated image
-# - save_to_json("output_dir") → JSON result
-```
-
----
-
-## 5. Application Architecture
+## 2. Project Structure
 
 ```
 indicOCR/
 ├── app/
-│   ├── __init__.py
-│   ├── main.py                  # FastAPI app entry point, lifespan, CORS
-│   ├── config.py                # Settings (paths, model config, defaults)
+│   ├── main.py                  # FastAPI entry, lifespan, CORS
+│   ├── config.py                # Settings from env vars + .env
 │   ├── routes/
-│   │   ├── __init__.py
-│   │   ├── ocr.py               # Single-image OCR endpoint
-│   │   ├── batch.py             # Batch (folder) OCR endpoint
-│   │   └── health.py            # Health check endpoint
+│   │   ├── ocr.py               # POST /ocr/single
+│   │   ├── batch.py             # POST /ocr/batch
+│   │   └── health.py            # GET /health, GET /ocr/languages
 │   ├── services/
-│   │   ├── __init__.py
-│   │   ├── ocr_engine.py        # PaddleOCR engine wrapper (singleton per lang)
-│   │   └── file_handler.py      # File I/O, output directory management
+│   │   ├── ocr_engine.py        # PaddleOCR wrapper, image preprocessing
+│   │   └── file_handler.py      # Output directory & file I/O
 │   ├── models/
-│   │   ├── __init__.py
-│   │   ├── requests.py          # Pydantic request models
-│   │   └── responses.py         # Pydantic response models
+│   │   ├── requests.py          # Pydantic request schemas
+│   │   └── responses.py         # Pydantic response schemas
 │   └── utils/
-│       ├── __init__.py
-│       ├── image_utils.py       # Image validation, format conversion
+│       ├── image_utils.py       # Image validation
 │       └── logging_config.py    # Logging setup
-├── tests/
-│   ├── __init__.py
-│   ├── conftest.py              # Fixtures (test client, sample images)
-│   ├── test_ocr.py              # Single-image endpoint tests
-│   └── test_batch.py            # Batch endpoint tests
+├── benchmarks/
+│   ├── benchmark.py             # CLI benchmarking tool
+│   └── README.md                # Benchmark documentation
+├── frontend/                    # Nginx + static UI
 ├── Dockerfile
 ├── docker-compose.yaml
 ├── requirements.txt
-├── PROJECT_PLAN.md              # This file
-├── README.md                    # Project README
-└── .env.example                 # Environment variables template
+└── .env.example
 ```
 
 ---
 
-## 6. API Endpoints
+## 3. OCR Engine Internals
 
-### 6.1 Health Check
+### 3.1 PaddleOCR Pipeline
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/health` | Service health and loaded model info |
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "loaded_languages": ["hi", "mr", "te", "ta"],
-  "detection_model": "PP-OCRv5_server_det",
-  "version": "1.0.0"
-}
+```
+Input Image
+    │
+    ▼
+[Preprocessing] — resize if longest side > 960px (see §3.2)
+    │
+    ▼
+1. Text Detection (PP-OCRv5_server_det)
+    │   → bounding box polygons around text regions
+    ▼
+2. Crop & sort regions (top-to-bottom, left-to-right)
+    │
+    ▼
+3. Text Recognition (language-specific model)
+    │   → (text, confidence) per region
+    ▼
+Output: list of { text, confidence, bounding_box }
 ```
 
----
+### 3.2 Image Preprocessing — Automatic Resize
 
-### 6.2 Single Image OCR
+**Location:** `app/services/ocr_engine.py` → `_preprocess_image()`
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/ocr/single` | Process a single uploaded image |
+Images with a longest side exceeding `MAX_LONG_SIDE` (default **960 px**) are
+automatically resized before being sent to PaddleOCR.
 
-**Request:** `multipart/form-data`
+#### Why 960 px? — Model Config Evidence
 
-| Field | Type | Required | Description |
+The value 960 is **not arbitrary** — it comes directly from the model's own
+inference configuration files (stored at `/root/.paddlex/official_models/`
+inside the container).
+
+**Detection model (`PP-OCRv5_server_det/inference.yml`):**
+
+```yaml
+PreProcess:
+  transform_ops:
+    - DetResizeForTest:
+        resize_long: 960          # ← PaddleOCR resizes to 960 internally
+```
+
+This means PaddleOCR's own preprocessing resizes the input image's longest
+side to **960 px** before feeding it to the detection network. Any pixels
+above 960 are discarded by the model anyway.
+
+The TensorRT dynamic shape config confirms the operating range:
+
+```yaml
+trt_dynamic_shapes:
+  x:
+    - [1, 3,   32,   32]    # minimum
+    - [1, 3,  736,  736]    # optimal
+    - [1, 3, 4000, 4000]    # maximum
+```
+
+The model accepts up to 4000×4000 but is optimized for **736–960 px**.
+
+**Recognition model (`devanagari_PP-OCRv5_mobile_rec/inference.yml`):**
+
+```yaml
+PreProcess:
+  transform_ops:
+    - RecResizeImg:
+        image_shape: [3, 48, 320]   # ← fixed 48×320 per cropped region
+```
+
+Each detected text region is cropped and resized to a fixed **48×320 px**
+before recognition. This is independent of the input image resolution —
+only the detection stage is affected by overall image size.
+
+**Both configs are the same across all languages** — detection uses a shared
+model (`PP-OCRv5_server_det`), and all recognition models use 48×320 crops.
+
+#### Why dimension-based, not file-size-based
+
+File size is a poor proxy for inference cost. A 400 KB PNG can have higher
+resolution than a 600 KB JPEG due to compression differences. CPU inference
+time scales with **pixel count**, so the longest-side check directly targets
+the cost driver.
+
+#### Performance impact (Intel Xeon 6, CPU)
+
+| Image | Resolution | Inference Time | Regions Detected |
 |---|---|---|---|
-| `file` | `UploadFile` | Yes | Image file (PNG, JPG, JPEG, TIFF, BMP, WEBP) |
-| `lang` | `str` (query) | Yes | Language code: `hi`, `mr`, `te`, `ta` |
-| `save_annotated` | `bool` (query) | No | Save annotated image (default: `true`) |
+| Screenshot (188 KB) | ~1200×800 | **3.0 s** | 26 |
+| Downloaded scan (1.4 MB) | 3456×4608 | **139 s** | 15 |
+| Same scan, pre-resized to 960 | ~720×960 | **~3-5 s** | ~25+ |
 
-**Response:**
-```json
-{
-  "success": true,
-  "filename": "document_001.png",
-  "language": "hi",
-  "output_dir": "${OCR_OUTPUT_BASE}/single/hi/20260215_143022_document_001",
-  "results": [
-    {
-      "text": "नमस्ते दुनिया",
-      "confidence": 0.9523,
-      "bounding_box": [[10, 20], [200, 20], [200, 60], [10, 60]]
-    }
-  ],
-  "full_text": "नमस्ते दुनिया\nयह एक परीक्षण है",
-  "processing_time_seconds": 2.34
-}
+Key findings:
+- **46× slower** on the full-res image without pre-resize
+- **Fewer regions detected** at high resolution — the detection model's
+  receptive field is tuned for ~960 px; oversized images cause text regions
+  to fragment or fall below detection thresholds
+- Pre-resizing to 960 px restores both speed and accuracy
+
+#### Implementation
+
+```python
+MAX_LONG_SIDE: int = 960
+
+def _preprocess_image(image_path: str | Path) -> str:
+    img = Image.open(image_path)
+    w, h = img.size
+    long_side = max(w, h)
+
+    if long_side <= MAX_LONG_SIDE:
+        return str(image_path)          # no-op for small images
+
+    scale = MAX_LONG_SIDE / long_side
+    new_w, new_h = int(w * scale), int(h * scale)
+    img = img.resize((new_w, new_h), Image.LANCZOS)
+
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=Path(image_path).suffix)
+    img.save(tmp.name, quality=95)
+    return tmp.name                     # resized temp path
 ```
 
-**Output Files (saved to disk):**
-```
-${OCR_OUTPUT_BASE}/single/hi/20260215_143022_document/
-├── result.json           # Structured OCR results
-├── extracted_text.txt    # Plain text output
-└── annotated.png         # Image with bounding boxes drawn
-```
+Both `run_ocr()` and `run_ocr_and_save_annotated()` call `_preprocess_image()`
+before passing the image to `engine.predict()`.
 
----
+### 3.3 PP-OCRv5 Result Parsing
 
-### 6.3 Batch OCR (Server Folder)
+PaddleOCR PP-OCRv5 returns `OCRResult` objects that are **dict-like**, not
+plain attribute containers. The actual OCR data lives inside:
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/ocr/batch` | Process all images in a server folder |
-
-**Request:** `application/json`
-
-```json
-{
-  "folder_path": "${OCR_INPUT_BASE}/hindi",
-  "lang": "hi",
-  "save_annotated": true,
-  "recursive": false
-}
+```python
+prediction.json["res"]
+# Contains: rec_texts, rec_scores, dt_polys
 ```
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `folder_path` | `str` | Yes | Absolute path to folder containing images on the server |
-| `lang` | `str` | Yes | Language code: `hi`, `mr`, `te`, `ta` |
-| `save_annotated` | `bool` | No | Save annotated images (default: `true`) |
-| `recursive` | `bool` | No | Scan subfolders recursively (default: `false`) |
+**Not** as direct attributes (`prediction.rec_texts` silently returns `{}`).
+This was a breaking change from older PaddleOCR versions.
 
-**Response:**
-```json
-{
-  "success": true,
-  "folder_path": "${OCR_INPUT_BASE}/hindi",
-  "language": "hi",
-  "output_dir": "${OCR_OUTPUT_BASE}/batch/hi/folder_name",
-  "total_images": 25,
-  "processed": 23,
-  "failed": 2,
-  "processing_time_seconds": 58.12,
-  "results": [
-    {
-      "filename": "page_001.png",
-      "success": true,
-      "results": [...],
-      "full_text": "...",
-      "processing_time_seconds": 2.1
-    },
-    {
-      "filename": "corrupt_image.jpg",
-      "success": false,
-      "error": "Failed to decode image"
-    }
-  ]
-}
-```
+### 3.4 Lazy Singleton Pattern
 
-**Output Files (saved to disk):**
-```
-${OCR_OUTPUT_BASE}/batch/hi/20260215_143500_folder/
-├── batch_summary.json              # Aggregated results for all images
-├── page_001/
-│   ├── result.json
-│   ├── extracted_text.txt
-│   └── annotated.png
-├── page_002/
-│   ├── result.json
-│   ├── extracted_text.txt
-│   └── annotated.png
-└── ...
-```
-
----
-
-### 6.4 Supported Languages
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/ocr/languages` | List supported languages and their models |
-
-**Response:**
-```json
-{
-  "languages": [
-    {"code": "hi", "name": "Hindi", "script": "Devanagari"},
-    {"code": "mr", "name": "Marathi", "script": "Devanagari"},
-    {"code": "te", "name": "Telugu", "script": "Telugu"},
-    {"code": "ta", "name": "Tamil", "script": "Tamil"}
-  ]
-}
-```
-
----
-
-## 7. OCR Engine Design
-
-### 7.1 Lazy Singleton Pattern
-
-PaddleOCR models are large and take time to load. The engine uses a **lazy singleton per language** pattern:
+One `PaddleOCR` engine instance per language, created on first request:
 
 ```python
 class OCREngineManager:
@@ -295,147 +212,202 @@ class OCREngineManager:
     @classmethod
     def get_engine(cls, lang: str) -> PaddleOCR:
         if lang not in cls._engines:
-            cls._engines[lang] = PaddleOCR(
-                lang=lang,
-                text_detection_model_name="PP-OCRv5_server_det",
-                use_doc_orientation_classify=False,
-                use_doc_unwarping=False,
-                use_textline_orientation=False,
-            )
+            cls._engines[lang] = PaddleOCR(lang=lang, ...)
         return cls._engines[lang]
 ```
 
-### 7.2 Model Loading Strategy
+First request per language takes ~5–6 s (model download + load). Subsequent
+requests reuse the cached engine.
 
-- Models are loaded **on first request** for a given language (lazy loading)
-- Once loaded, the engine instance is cached for all subsequent requests
-- Optionally, a `PRELOAD_LANGUAGES` config can trigger model loading on app startup
+### 3.5 Models Used
 
-### 7.3 Resource Considerations
+| Component | Model | Notes |
+|---|---|---|
+| Detection | `PP-OCRv5_server_det` | Shared across all languages; better on handwritten text |
+| Recognition (hi/mr) | `devanagari_PP-OCRv5_mobile_rec` | Shared Devanagari model |
+| Recognition (te) | `te_PP-OCRv5_mobile_rec` | Telugu-specific |
+| Recognition (ta) | `ta_PP-OCRv5_mobile_rec` | Tamil-specific |
 
-| Factor | Strategy |
+Models are downloaded from HuggingFace on first use and cached at
+`/root/.paddlex/official_models/` inside the container.
+
+### 3.6 Memory Allocator — tcmalloc
+
+The Dockerfile sets `LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc.so.4`
+to use Google's tcmalloc instead of glibc's default malloc. This reduces
+memory fragmentation and allocation overhead during repeated inference
+cycles, which is beneficial for long-running PaddlePaddle services.
+
+---
+
+## 4. API Endpoints
+
+### POST `/ocr/single`
+
+Upload a single image for OCR.
+
+```bash
+curl -X POST "http://localhost:8111/ocr/single?lang=hi&save_annotated=false" \
+  -F "file=@image.jpg"
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `file` | multipart | Yes | Image file (PNG, JPG, TIFF, BMP, WEBP) |
+| `lang` | query | Yes | Language code: `hi`, `mr`, `te`, `ta` |
+| `save_annotated` | query | No | Save annotated image (default: `true`) |
+
+### POST `/ocr/batch`
+
+Process all images in a server-side folder.
+
+```bash
+curl -X POST "http://localhost:8111/ocr/batch" \
+  -H "Content-Type: application/json" \
+  -d '{"folder_path": "/user-ali/resources/ocr_inputs/hindi", "lang": "hi"}'
+```
+
+### GET `/health`
+
+Health check — returns loaded languages and service status.
+
+### GET `/ocr/languages`
+
+List supported languages, codes, and scripts.
+
+---
+
+## 5. Benchmarking
+
+Full documentation: [`benchmarks/README.md`](benchmarks/README.md)
+
+### Quick run
+
+```bash
+cd indicOCR/benchmarks
+python -m benchmark -n 10 -l hi       # 10 Hindi images
+python -m benchmark -n 5 -l hi,te     # 5 each, Hindi + Telugu
+```
+
+### Output
+
+Two CSVs per run in `/user-ali/outputs/ocr/benchmarks/`:
+
+| File | Contents |
 |---|---|
-| Memory | Each language engine ~500MB–1GB RAM; share detection model across languages |
-| Concurrency | Use FastAPI's async with `run_in_executor` for CPU-bound OCR calls |
-| Batch size | Process images sequentially within a batch to control memory |
+| `benchmark_<run_id>_details.csv` | Per-image: latency, confidence, accuracy, ground truth text, extracted text |
+| `benchmark_<run_id>_summary.csv` | Per-language aggregates: mean/median/p95 latency, mean accuracy |
+
+### Key CLI flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `-n` | `100` | Images per language |
+| `-l` | `hi,te` | Languages (comma-separated) |
+| `-u` | `default` | User tag in run ID |
+| `--api-url` | `http://localhost:8111` | API base URL |
+| `--seed` | `42` | Reproducible sampling |
+
+### Accuracy metric
+
+**CER (Character Error Rate)** via `rapidfuzz.distance.Indel`.
+Accuracy = `1 - CER`. Both OCR output and ground truth are normalized to
+single-line format before comparison.
 
 ---
 
-## 8. Output Structure
+## 6. Configuration
 
-All outputs are saved under `${OCR_OUTPUT_BASE}` with separation by mode:
-
-```
-${OCR_OUTPUT_BASE}/
-├── single/                    # Single-image results
-│   ├── hi/                    # Grouped by language
-│   │   ├── document_001/
-│   │   │   ├── result.json
-│   │   │   ├── extracted_text.txt
-│   │   │   └── annotated.png
-│   │   └── ...
-│   ├── mr/
-│   ├── te/
-│   └── ta/
-└── batch/                     # Batch results
-    ├── hi/
-    │   ├── Page_Set/
-    │   │   ├── batch_summary.json
-    │   │   ├── page_001/
-    │   │   │   ├── result.json
-    │   │   │   ├── extracted_text.txt
-    │   │   │   └── annotated.png
-    │   │   └── ...
-    │   └── ...
-    ├── mr/
-    ├── te/
-    └── ta/
-```
-
----
-
-## 9. Docker Configuration
-
-### Dockerfile (Multi-stage)
-
-- **Base:** `python:3.10-slim`
-- **System deps:** `libgl1-mesa-glx`, `libglib2.0-0`, `libgomp1` (OpenCV runtime)
-- **Python deps:** PaddlePaddle (CPU), PaddleOCR, FastAPI, uvicorn
-- **Expose:** Port 8111
-- **Volumes:** Mount `${OCR_OUTPUT_BASE}` and `${OCR_INPUT_BASE}` directories
-
-### Docker Compose
-
-```yaml
-services:
-  indicocr:
-    build: .
-    ports:
-      - "8111:8111"
-    volumes:
-      - ${OCR_OUTPUT_BASE}:${OCR_OUTPUT_BASE}
-      - ${OCR_INPUT_BASE}:${OCR_INPUT_BASE}
-    environment:
-      - OCR_OUTPUT_BASE=${OCR_OUTPUT_BASE}
-      - LOG_LEVEL=INFO
-      - PRELOAD_LANGUAGES=hi,mr
-```
-
----
-
-## 10. Configuration & Environment Variables
+### Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `OCR_OUTPUT_BASE` | `${HOME_DIR}/outputs/ocr` | Base directory for all OCR outputs |
-| `OCR_HOST` | `0.0.0.0` | FastAPI bind host |
-| `OCR_PORT` | `8111` | FastAPI bind port |
-| `LOG_LEVEL` | `INFO` | Logging level |
-| `PRELOAD_LANGUAGES` | `` (empty) | Comma-separated lang codes to preload on startup |
-| `MAX_IMAGE_SIZE_MB` | `50` | Maximum upload file size in MB |
-| `SUPPORTED_EXTENSIONS` | `.png,.jpg,.jpeg,.tiff,.bmp,.webp` | Allowed image file extensions |
+| `HOME_DIR` | — (required) | Base path for the workspace |
+| `OCR_OUTPUT_BASE` | `${HOME_DIR}/outputs/ocr` | All OCR outputs saved here |
+| `OCR_INPUT_BASE` | `${HOME_DIR}/resources/ocr_inputs` | Default input folder |
+| `OCR_HOST` | `0.0.0.0` | Bind address |
+| `OCR_PORT` | `8111` | Bind port |
+| `LOG_LEVEL` | `INFO` | Python logging level |
+| `PRELOAD_LANGUAGES` | `` (empty) | Comma-separated langs to load on startup |
+| `MAX_IMAGE_SIZE_MB` | `50` | Max upload size |
+
+### Tunable Constants in `ocr_engine.py`
+
+| Constant | Default | Source | Description |
+|---|---|---|---|
+| `MAX_LONG_SIDE` | `960` | `PP-OCRv5_server_det/inference.yml` → `DetResizeForTest.resize_long` | Pre-resize threshold matching the model's native input size |
 
 ---
 
-## 11. Error Handling
+## 7. Docker
 
-| Scenario | HTTP Code | Error Response |
-|---|---|---|
-| Unsupported language code | 400 | `{"detail": "Unsupported language 'xx'. Supported: hi, mr, te, ta"}` |
-| Invalid image file | 400 | `{"detail": "Invalid image file. Supported formats: PNG, JPG, TIFF, BMP, WEBP"}` |
-| Folder not found | 404 | `{"detail": "Folder not found: /path/to/folder"}` |
-| No images in folder | 400 | `{"detail": "No supported image files found in folder"}` |
-| File too large | 413 | `{"detail": "File size exceeds 50MB limit"}` |
-| OCR engine error | 500 | `{"detail": "OCR processing failed: <error_message>"}` |
-
-### Sample Test Commands
+### Build & Run
 
 ```bash
-# Run all tests
-pytest tests/ -v
+docker compose up --build -d
+docker compose logs -f indicocr       # backend logs
+docker compose logs -f indicocr-ui    # frontend logs
+docker compose down                   # stop
+```
 
-# Run with coverage
-pytest tests/ --cov=app --cov-report=html
+### Volumes
 
-# E2E: Single image
-curl -X POST "http://localhost:8111/ocr/single?lang=hi" \
-  -F "file=@${OCR_INPUT_BASE}/hindi/sample.png"
+| Host Path | Container Path | Purpose |
+|---|---|---|
+| `${OCR_OUTPUT_BASE}` | `${OCR_OUTPUT_BASE}` | OCR results (read/write) |
+| `${OCR_INPUT_BASE}` | `${OCR_INPUT_BASE}` | Input images for batch mode |
 
-# E2E: Batch
-curl -X POST "http://localhost:8111/ocr/batch" \
-  -H "Content-Type: application/json" \
-  -d '{"folder_path": "${OCR_INPUT_BASE}/hindi", "lang": "hi"}'
+### Dockerfile
+
+- Base: `python:3.10-slim`
+- System deps: `libgl1`, `libglib2.0-0`, `libgomp1`, `libgoogle-perftools4` (tcmalloc)
+- Env: `PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True`, `LD_PRELOAD=libtcmalloc.so.4`
+- Exposes port `8111`
+- Entry: `uvicorn app.main:app --host 0.0.0.0 --port 8111`
+
+---
+
+## 8. Dependencies
+
+```
+fastapi>=0.115.0          # Web framework
+uvicorn[standard]>=0.30.0 # ASGI server
+paddleocr>=3.0.0          # OCR engine
+paddlepaddle>=3.0.0       # Deep learning framework (CPU)
+Pillow>=10.0.0            # Image preprocessing & resize
+opencv-python-headless    # Image I/O
+pydantic>=2.0.0           # Data validation
+pydantic-settings>=2.0.0  # Env-based config
+aiofiles>=24.0.0          # Async file I/O
+rapidfuzz>=3.0.0          # CER computation (benchmarks)
+requests>=2.31.0          # HTTP client (benchmarks)
 ```
 
 ---
 
-## 12. Key Design Decisions
+## 9. Key Design Decisions
 
 | Decision | Rationale |
 |---|---|
-| **PP-OCRv5_server_det** for detection | Higher accuracy on handwritten text vs mobile variant |
-| **Lazy model loading** | Avoid loading all 3 recognition models at startup; load on demand |
-| **Sync OCR in thread pool** | PaddleOCR is CPU-bound; wrapping in `asyncio.to_thread()` keeps FastAPI responsive |
-| **Separate single/batch dirs** | Clean output organization; prevents mixing one-off and bulk results |
-| **Language as explicit param** | Language-agnostic endpoints; same API for all scripts |
-| **No preprocessing flags** | Disable `doc_orientation_classify`, `doc_unwarping`, `textline_orientation` for speed; can be enabled later |
+| **Pre-resize to 960 px** | Matches `DetResizeForTest.resize_long: 960` from the model config. Input above 960 px is discarded by PaddleOCR internally, so pre-resizing avoids wasting memory/CPU on pixels that get thrown away. |
+| **Dimension-based resize, not file-size** | File size depends on format/compression; pixel count is the actual cost driver. |
+| **tcmalloc via LD_PRELOAD** | PaddlePaddle does many small tensor allocations; tcmalloc's thread-local caches reduce fragmentation and allocation overhead. |
+| **PP-OCRv5_server_det for detection** | Higher accuracy on handwritten text vs the mobile variant. |
+| **Lazy model loading** | Avoids 20+ second startup loading all 4 language models. |
+| **Parse `prediction.json['res']`** | PP-OCRv5 `OCRResult` is dict-like; data is nested in `.json['res']`, not exposed as top-level attributes. |
+| **`asyncio.to_thread` for OCR calls** | PaddleOCR is CPU-bound; running in a thread keeps FastAPI responsive. |
+| **Two benchmark CSVs** | Details CSV has per-image metrics + full text; summary CSV has per-language aggregates. |
+| **LANCZOS resize at quality=95** | Best downscale quality; near-lossless JPEG saves for temp files. |
+
+---
+
+## 10. Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `regions=0` on all images | Parsing `prediction.rec_texts` directly (old API) | Use `prediction.json['res']['rec_texts']` instead |
+| 120+ second latency per image | Image resolution too high (3000+ px) | `MAX_LONG_SIDE=960` auto-resize handles this; verify preprocessing is active in logs |
+| `Resized image size exceeds max_side_limit` in logs | PaddleOCR's internal 4000 px limit being hit | Our 960 px pre-resize prevents this from being reached |
+| `Read timed out` in benchmark | API timeout too short | Benchmark uses 600s timeout; increase if needed |
+| Model download on first request | Normal — HuggingFace download on first use per language | Set `PRELOAD_LANGUAGES=hi,te` to load at startup |
+| High memory usage | Each language engine ~500 MB–1 GB | Load only needed languages; don't preload all 4 |

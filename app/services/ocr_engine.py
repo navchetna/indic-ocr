@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
 
+from PIL import Image
 from paddleocr import PaddleOCR
 
 from app.config import SUPPORTED_LANGUAGES, get_settings
@@ -62,6 +64,53 @@ class OCREngineManager:
                 logger.warning(f"Skipping preload for unsupported language: {lang}")
 
 
+# ---------------------------------------------------------------------------
+# Image preprocessing
+# ---------------------------------------------------------------------------
+
+# Maximum allowed longest side (pixels). Images larger than this are resized
+# before inference to keep CPU latency reasonable (~3-10 s instead of ~140 s).
+#
+# This value matches the PP-OCRv5_server_det model's own preprocessing:
+#   DetResizeForTest.resize_long = 960  (from inference.yml)
+# Any input larger than 960 px is resized down by PaddleOCR internally anyway,
+# so pre-resizing to 960 avoids wasting memory/CPU on pixels that get discarded.
+MAX_LONG_SIDE: int = 960
+
+
+def _preprocess_image(image_path: str | Path) -> str:
+    """Resize an image if its longest side exceeds MAX_LONG_SIDE.
+
+    Returns the path to use for inference — either the original (unchanged)
+    or a resized temporary file.
+    """
+    img = Image.open(image_path)
+    w, h = img.size
+    long_side = max(w, h)
+
+    if long_side <= MAX_LONG_SIDE:
+        img.close()
+        return str(image_path)
+
+    scale = MAX_LONG_SIDE / long_side
+    new_w = int(w * scale)
+    new_h = int(h * scale)
+
+    logger.info(
+        f"Resizing image from {w}x{h} to {new_w}x{new_h} "
+        f"(longest side {long_side} > {MAX_LONG_SIDE})"
+    )
+
+    img = img.resize((new_w, new_h), Image.LANCZOS)
+
+    suffix = Path(image_path).suffix or ".jpg"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    img.save(tmp.name, quality=95)
+    img.close()
+    tmp.close()
+    return tmp.name
+
+
 def run_ocr(image_input: str | Path, lang: str) -> dict[str, Any]:
     """
     Run OCR on a single image using official PaddleOCR v3.x API.
@@ -76,7 +125,7 @@ def run_ocr(image_input: str | Path, lang: str) -> dict[str, Any]:
             - full_text: concatenated recognized text (newline-separated)
     """
     engine = OCREngineManager.get_engine(lang)
-    image_path = str(image_input)
+    image_path = _preprocess_image(image_input)
 
     predictions = engine.predict(image_path)
 
@@ -84,15 +133,26 @@ def run_ocr(image_input: str | Path, lang: str) -> dict[str, Any]:
     text_lines = []
 
     for prediction in predictions:
-        # PaddleOCR v3.x result object has these attributes:
-        rec_texts = prediction.rec_texts if hasattr(prediction, "rec_texts") else []
-        rec_scores = prediction.rec_scores if hasattr(prediction, "rec_scores") else []
-        dt_polys = prediction.dt_polys if hasattr(prediction, "dt_polys") else []
+        # PaddleOCR PP-OCRv5 returns OCRResult (dict-like) objects.
+        # Data is nested inside prediction.json['res'], NOT as direct attributes.
+        res_data: dict = {}
+        if hasattr(prediction, "json") and isinstance(prediction.json, dict):
+            res_data = prediction.json.get("res", {})
+        elif hasattr(prediction, "get"):
+            # Fallback: try dict-like access directly
+            res_data = dict(prediction)
+
+        rec_texts = res_data.get("rec_texts", [])
+        rec_scores = res_data.get("rec_scores", [])
+        dt_polys = res_data.get("dt_polys", [])
 
         for i, text in enumerate(rec_texts):
-            if text.strip():  # Skip empty text
+            if text.strip():
                 score = float(rec_scores[i]) if i < len(rec_scores) else 0.0
-                bbox = dt_polys[i].tolist() if i < len(dt_polys) else []
+                bbox = dt_polys[i] if i < len(dt_polys) else []
+                # Convert numpy arrays to plain lists if needed
+                if hasattr(bbox, "tolist"):
+                    bbox = bbox.tolist()
 
                 results.append({
                     "text": text,
@@ -176,7 +236,7 @@ def run_ocr_and_save_annotated(
         dict with results (list of {text, confidence, bounding_box}) and full_text.
     """
     engine = OCREngineManager.get_engine(lang)
-    image_path = str(image_input)
+    image_path = _preprocess_image(image_input)
 
     predictions = engine.predict(image_path)
 

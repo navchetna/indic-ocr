@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender-dev \
     libssl3 \
     ca-certificates \
+    libgoogle-perftools4 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -23,6 +24,9 @@ COPY . .
 
 # Suppress verbose PaddleX model source check during startup
 ENV PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
+
+# Use tcmalloc for better memory allocation performance with PaddlePaddle
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc.so.4
 ENV OCR_OUTPUT_BASE=/app/outputs/ocr
 
 EXPOSE 8111

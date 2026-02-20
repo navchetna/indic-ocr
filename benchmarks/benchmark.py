@@ -96,6 +96,8 @@ class BenchmarkResult:
     accuracy: float = 0.0
     ocr_text_length: int = 0
     ground_truth_length: int = 0
+    ground_truth_text: str = ""
+    extracted_text: str = ""
     status: str = "success"
     error_message: str = ""
 
@@ -221,7 +223,7 @@ def call_ocr_api(
         params = {"lang": api_lang, "save_annotated": "false"}
 
         start = time.perf_counter()
-        resp = requests.post(url, files=files, params=params, timeout=120)
+        resp = requests.post(url, files=files, params=params, timeout=600)
         latency = time.perf_counter() - start
 
     resp.raise_for_status()
@@ -257,6 +259,7 @@ def benchmark_single(
         return result
 
     result.ground_truth_length = len(_normalize_text(gt_text))
+    result.ground_truth_text = _normalize_text(gt_text)
 
     # Call OCR API
     try:
@@ -273,6 +276,7 @@ def benchmark_single(
     # Extract metrics
     ocr_text = api_resp.get("extracted_text", "")
     result.ocr_text_length = len(_normalize_text(ocr_text))
+    result.extracted_text = _normalize_text(ocr_text)
     result.latency_seconds = round(api_resp.get("_measured_latency", 0.0), 4)
 
     # Compute average confidence from text_regions in the API response
@@ -391,6 +395,8 @@ def _write_details_csv(csv_file: Path, results: list[BenchmarkResult]) -> None:
         "accuracy",
         "ocr_text_length",
         "ground_truth_length",
+        "ground_truth_text",
+        "extracted_text",
         "status",
         "error_message",
     ]
@@ -410,6 +416,8 @@ def _write_details_csv(csv_file: Path, results: list[BenchmarkResult]) -> None:
                     "accuracy": r.accuracy,
                     "ocr_text_length": r.ocr_text_length,
                     "ground_truth_length": r.ground_truth_length,
+                    "ground_truth_text": r.ground_truth_text,
+                    "extracted_text": r.extracted_text,
                     "status": r.status,
                     "error_message": r.error_message,
                 }
